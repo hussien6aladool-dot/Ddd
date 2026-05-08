@@ -1,1 +1,774 @@
-# Ddd
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      p.timestamp = message.timestamp;
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>المركز الديني الشامل | صدقة جارية</title>
+<meta name="theme-color" content="#0a2f2a">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg1: #0a2f2a;
+  --bg2: #06312c;
+  --sidebar: #0d3b33;
+  --card: #174e44;
+  --card-dark: #0e3e35;
+  --green: #2b7a64;
+  --gold: #e9b741;
+  --gold2: #c99e3b;
+  --text: #f0ede8;
+  --text-gold: #f3e4c2;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Cairo', 'Amiri', serif;
+  background: radial-gradient(1200px 800px at 80% -10%, rgba(233,183,65,0.08), transparent),
+              linear-gradient(145deg, var(--bg1) 0%, var(--bg2) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  line-height: 1.8;
+  min-height: 100vh;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #082821; }
+::-webkit-scrollbar-thumb { background: var(--gold2); border-radius: 4px; }
+
+.sadaqa-banner {
+  background: linear-gradient(90deg, var(--gold), #f5d07a 50%, var(--gold));
+  color: #1e3a2f;
+  text-align: center;
+  padding: 14px 20px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 2px solid rgba(0,0,0,0.1);
+}
+.sadaqa-banner .developer { font-size: 0.85rem; margin-top: 4px; font-weight: 600; opacity: 0.9; }
+
+.container { display: flex; min-height: calc(100vh - 78px); }
+
+.sidebar {
+  width: 300px;
+  background: rgba(13, 59, 51, 0.85);
+  backdrop-filter: blur(12px);
+  padding: 30px 18px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(201,158,59,0.2);
+  position: sticky;
+  top: 78px;
+  height: calc(100vh - 78px);
+  overflow-y: auto;
+}
+.logo h2 {
+  font-size: 1.9rem;
+  text-align: center;
+  margin-bottom: 30px;
+  color: var(--text-gold);
+  font-weight: 800;
+  padding-bottom: 14px;
+  position: relative;
+}
+.logo h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 25%;
+  left: 25%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold2), transparent);
+  border-radius: 3px;
+}
+.tabs-nav { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+.tab-btn {
+  background: transparent;
+  border: 2px solid rgba(43,122,100,0.6);
+  padding: 14px 18px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-gold);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Cairo';
+  text-align: right;
+  position: relative;
+  overflow: hidden;
+}
+.tab-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: translateX(-120%);
+  transition: 0.6s;
+}
+.tab-btn:hover::before { transform: translateX(120%); }
+.tab-btn.active, .tab-btn:hover {
+  background: linear-gradient(145deg, var(--gold), var(--gold2));
+  border-color: var(--gold);
+  color: var(--bg1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(233,183,65,0.25);
+}
+
+.content {
+  flex: 1;
+  padding: 32px 40px;
+  overflow-y: auto;
+  background: rgba(22, 50, 45, 0.5);
+  backdrop-filter: blur(6px);
+}
+.tab-content { display: none; animation: fade 0.5s ease; }
+.tab-content.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(12px);} to { opacity: 1; transform: translateY(0);} }
+
+.section-box {
+  background: linear-gradient(165deg, rgba(23,78,68,0.92), rgba(14,62,53,0.88));
+  padding: 26px;
+  border-radius: 28px;
+  margin-bottom: 26px;
+  border: 1px solid rgba(201,158,59,0.18);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+h1 { margin-bottom: 12px; color: var(--text-gold); font-size: 1.8rem; font-weight: 800; }
+.subtitle { opacity: 0.9; margin-bottom: 18px; }
+
+.hero-info { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0 8px; }
+.info-pill {
+  background: var(--card-dark);
+  border: 1px solid rgba(233,183,65,0.25);
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 0.95rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 18px; }
+.link-card {
+  background: linear-gradient(145deg, #206b5b, #1a5347);
+  padding: 20px;
+  border-radius: 22px;
+  text-align: center;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: #ffefcf;
+  display: block;
+  border: 1px solid rgba(233,183,65,0.12);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+}
+.link-card:hover {
+  background: linear-gradient(145deg, var(--gold), var(--gold2));
+  color: #0a2f2a;
+  transform: translateY(-5px);
+  box-shadow: 0 14px 28px rgba(233,183,65,0.3);
+}
+.link-card h3 { font-size: 1.25rem; margin-bottom: 6px; font-weight: 800; }
+.link-card p { font-size: 0.92rem; opacity: 0.92; }
+
+.zikr-type { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 22px; }
+.zikr-btn {
+  background: #194e41;
+  border: 2px solid var(--gold2);
+  padding: 10px 18px;
+  border-radius: 40px;
+  cursor: pointer;
+  color: var(--text-gold);
+  font-weight: 700;
+  font-family: 'Cairo';
+  transition: 0.25s;
+}
+.zikr-btn.active, .zikr-btn:hover { background: var(--gold2); color: var(--bg1); transform: translateY(-2px); }
+
+.display-counter {
+  background: radial-gradient(circle at center, #103f36, var(--card-dark));
+  border-radius: 28px;
+  padding: 30px 20px;
+  margin: 18px auto;
+  border: 2px solid rgba(233,183,65,0.25);
+  max-width: 420px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s;
+}
+.display-counter:active { transform: scale(0.98); }
+.display-counter span { display: block; font-size: 1.2rem; color: var(--text-gold); margin-bottom: 8px; }
+.counter-number {
+  font-size: 5rem;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(233,183,65,0.25);
+  font-variant-numeric: tabular-nums;
+}
+.counter-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.counter-actions button, .secondary-btn {
+  background: linear-gradient(145deg, var(--gold), var(--gold2));
+  border: none;
+  padding: 12px 22px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--bg1);
+  font-family: 'Cairo';
+  transition: 0.25s;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+.counter-actions button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(233,183,65,0.3); }
+.counter-actions button:active { transform: scale(0.96); }
+.secondary-btn { background: var(--green); color: var(--text-gold); margin-top: 12px; font-size: 0.95rem; }
+.secondary-btn:hover { background: #348a73; }
+
+.location-control { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 20px 0; }
+.location-control label { font-weight: 700; color: var(--text-gold); }
+.location-control input {
+  padding: 11px 16px;
+  border-radius: 40px;
+  border: 2px solid rgba(201,158,59,0.3);
+  font-family: 'Cairo';
+  background: var(--card-dark);
+  color: var(--text);
+  min-width: 180px;
+  outline: none;
+}
+.location-control input:focus { border-color: var(--gold); }
+.location-control button {
+  padding: 11px 18px;
+  border-radius: 40px;
+  border: none;
+  font-family: 'Cairo';
+  background: linear-gradient(145deg, var(--gold), var(--gold2));
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--bg1);
+}
+
+.prayer-times {
+  background: var(--card-dark);
+  border-radius: 26px;
+  padding: 22px;
+  text-align: center;
+  border: 1px solid rgba(201,158,59,0.2);
+}
+.prayer-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.prayer-header h3 { color: var(--gold); font-size: 1.4rem; }
+.prayer-header small { opacity: 0.85; display: block; font-family: 'Amiri'; }
+.next-prayer {
+  background: rgba(233,183,65,0.12);
+  border: 1px solid rgba(233,183,65,0.3);
+  padding: 10px 16px;
+  border-radius: 16px;
+}
+.next-prayer span { display: block; font-size: 0.85rem; opacity: 0.9; }
+.next-prayer strong { color: var(--gold); font-size: 1.1rem; }
+
+.prayer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 10px; }
+.prayer-card {
+  background: rgba(16,63,54,0.7);
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  transition: 0.3s;
+}
+.prayer-card.active {
+  border-color: var(--gold);
+  background: rgba(233,183,65,0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(233,183,65,0.2);
+}
+.prayer-card .name { font-weight: 700; color: var(--text-gold); }
+.prayer-card .time { font-size: 1.3rem; font-weight: 800; color: var(--gold); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+.dua-box {
+  background: var(--card-dark);
+  padding: 18px 20px;
+  border-radius: 20px;
+  margin-top: 14px;
+  font-family: 'Amiri', serif;
+  font-size: 1.25rem;
+  line-height: 2.1;
+  border-right: 4px solid var(--gold2);
+  text-align: justify;
+}
+
+.share-btn {
+  background: #25d366;
+  color: #0a2f2a;
+  border: none;
+  padding: 13px 26px;
+  border-radius: 40px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 18px;
+  font-family: 'Cairo';
+  transition: 0.25s;
+  box-shadow: 0 8px 20px rgba(37,211,102,0.25);
+}
+.share-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(37,211,102,0.35); }
+
+.footer-note { text-align: center; opacity: 0.7; font-size: 0.9rem; margin-top: 10px; }
+
+@media (max-width: 980px) {
+  .container { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    top: 0;
+    flex-direction: column;
+    padding: 16px 12px;
+    border-left: none;
+    border-bottom: 1px solid rgba(201,158,59,0.2);
+  }
+  .tabs-nav { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .tab-btn { font-size: 0.95rem; padding: 10px 14px; border-radius: 12px; }
+  .content { padding: 20px 16px; }
+  .logo h2 { margin-bottom: 16px; font-size: 1.6rem; }
+}
+@media (max-width: 520px) {
+  .sadaqa-banner { font-size: 0.9rem; padding: 10px 12px; }
+  .counter-number { font-size: 4rem; }
+  h1 { font-size: 1.5rem; }
+}
+</style>
+</head>
+<body>
+<div class="sadaqa-banner">
+<p>🤲 صدقة جارية عن أرواح <strong>عمي زكريا أبو ناصر - عمي يحيى أبو محمد - ابن العم محمود العدول</strong> 🤲</p>
+<p class="developer">بتطوير: المبرمج حسين العدول | اللهم اجعلها في ميزان حسناتهم</p>
+</div>
+<div class="container">
+<aside class="sidebar">
+<div class="logo"><h2>🕌 نور الإيمان</h2></div>
+<nav class="tabs-nav">
+<button class="tab-btn active" data-tab="home">🏠 الرئيسية</button>
+<button class="tab-btn" data-tab="quran">📖 القرآن الكريم</button>
+<button class="tab-btn" data-tab="adkar">🕋 الأذكار</button>
+<button class="tab-btn" data-tab="tasbeeh">📿 التسبيح</button>
+<button class="tab-btn" data-tab="prayer">🕌 الصلاة</button>
+</nav>
+<div class="footer-note">﴿ ألا بذكر الله تطمئن القلوب ﴾</div>
+</aside>
+<main class="content">
+<div id="home" class="tab-content active">
+<div class="section-box">
+<h1>مرحباً بك في المركز الديني الشامل</h1>
+<p class="subtitle">مصحف، أذكار، تسبيح، ومواقيت الصلاة — في مكان واحد وبتصميم مريح للعين</p>
+<div class="hero-info">
+<div class="info-pill">📅 <span id="hijri-date">... هجري</span></div>
+<div class="info-pill">⏰ <span id="gregorian-time">--:--</span></div>
+<div class="info-pill">📍 الأردن</div>
+</div>
+<div class="links-grid">
+<a href="https://quran.com/ar" target="_blank" class="link-card"><h3>📖 القرآن قراءة</h3><p>المصحف الشريف مع التفسير</p></a>
+<a href="https://mp3quran.net" target="_blank" class="link-card"><h3>🔊 القرآن صوت</h3><p>أشهر القراء بجودة عالية</p></a>
+<a href="https://hisnmuslim.com/27" target="_blank" class="link-card"><h3>🌅 أذكار الصباح</h3><p>حصن المسلم</p></a>
+<a href="https://hisnmuslim.com/28" target="_blank" class="link-card"><h3>🌙 أذكار المساء</h3><p>حصن المسلم</p></a>
+</div>
+<button class="share-btn" onclick="sharePage()">📲 شارك الصدقة الجارية</button>
+</div>
+<div class="section-box">
+<h1>دعاء للمرحومين</h1>
+<div class="dua-box">
+اللهم اغفر لعمي زكريا أبو ناصر وعمي يحيى أبو محمد وابن العم محمود العدول، وارحمهم وعافهم واعف عنهم، وأكرم نزلهم ووسع مدخلهم، واغسلهم بالماء والثلج والبرد، ونقهم من الخطايا كما ينقى الثوب الأبيض من الدنس. اللهم اجعل قبورهم روضة من رياض الجنة، وأنس وحدتهم، واجعل هذا العمل صدقة جارية في ميزان حسناتهم إلى يوم الدين. اللهم آمين.
+</div>
+</div>
+</div>
+
+<div id="quran" class="tab-content">
+<div class="section-box">
+<h1>📖 القرآن الكريم - روابط موثوقة</h1>
+<p class="subtitle">اختر مصدرك المفضل للقراءة أو الاستماع</p>
+<div class="links-grid">
+<a href="https://quran.com/ar" target="_blank" class="link-card"><h3>quran.com</h3><p>المصحف الإلكتروني مع تفسير</p></a>
+<a href="https://surahquran.com/quran" target="_blank" class="link-card"><h3>القرآن مكتوب</h3><p>سور كاملة بالرسم العثماني</p></a>
+<a href="https://mp3quran.net/ar" target="_blank" class="link-card"><h3>mp3quran</h3><p>تلاوات صوتية لأكثر من 150 قارئ</p></a>
+<a href="https://tvquran.com" target="_blank" class="link-card"><h3>tvquran</h3><p>بث مباشر للحرمين</p></a>
+<a href="https://quran.ksu.edu.sa" target="_blank" class="link-card"><h3>تفسير الملك سعود</h3><p>مصحف مع 10 تفاسير</p></a>
+<a href="https://ayatalquran.com" target="_blank" class="link-card"><h3>آيات</h3><p>مشروع جامعة الملك سعود</p></a>
+</div>
+</div>
+</div>
+
+<div id="adkar" class="tab-content">
+<div class="section-box">
+<h1>🕋 الأذكار والأدعية</h1>
+<p class="subtitle">روابط مباشرة لأصح الكتب والمصادر</p>
+<div class="links-grid">
+<a href="https://hisnmuslim.com/27" target="_blank" class="link-card"><h3>🌅 أذكار الصباح</h3><p>من حصن المسلم</p></a>
+<a href="https://hisnmuslim.com/28" target="_blank" class="link-card"><h3>🌙 أذكار المساء</h3><p>من حصن المسلم</p></a>
+<a href="https://hisnmuslim.com/ar/dua-and-zikr-4" target="_blank" class="link-card"><h3>😴 أذكار النوم</h3><p>قبل النوم والاستيقاظ</p></a>
+<a href="https://hisnmuslim.com" target="_blank" class="link-card"><h3>📿 حصن المسلم كامل</h3><p>جميع الأذكار اليومية</p></a>
+<a href="https://www.islamicfinder.org/duas/" target="_blank" class="link-card"><h3>🤲 أدعية مأثورة</h3><p>IslamicFinder</p></a>
+<a href="https://azkar.me" target="_blank" class="link-card"><h3>أذكاري</h3><p>تطبيق ويب تفاعلي</p></a>
+</div>
+</div>
+</div>
+
+<div id="tasbeeh" class="tab-content">
+<div class="section-box" style="text-align:center">
+<h1>📿 عداد التسبيح الذكي</h1>
+<p class="subtitle">اضغط على الدائرة الكبيرة أو زر المسافة للتسبيح - يحفظ تلقائياً</p>
+<div class="zikr-type">
+<button class="zikr-btn active" data-zikr="سبحان الله">سبحان الله</button>
+<button class="zikr-btn" data-zikr="الحمد لله">الحمد لله</button>
+<button class="zikr-btn" data-zikr="الله أكبر">الله أكبر</button>
+<button class="zikr-btn" data-zikr="لا إله إلا الله">لا إله إلا الله</button>
+<button class="zikr-btn" data-zikr="أستغفر الله">أستغفر الله</button>
+<button class="zikr-btn" data-zikr="الصلاة على النبي">الصلاة على النبي</button>
+</div>
+<div class="display-counter" id="tasbeeh-area" title="اضغط للتسبيح">
+<span id="current-zikr">سبحان الله</span>
+<div class="counter-number" id="counter-value">0</div>
+<span style="opacity:0.7; font-size:0.9rem">المجموع اليوم: <b id="total-count">0</b></span>
+</div>
+<div class="counter-actions">
+<button id="increment-btn">➕ تسبيح</button>
+<button id="decrement-btn">➖ نقص</button>
+<button id="reset-btn">🔄 تصفير</button>
+</div>
+<button id="reset-all-counters" class="secondary-btn">إعادة ضبط جميع الأذكار</button>
+</div>
+</div>
+
+<div id="prayer" class="tab-content">
+<div class="section-box">
+<h1>🕌 أوقات الصلاة</h1>
+<div class="location-control">
+<label>المدينة:</label>
+<input type="text" id="city-name" placeholder="مثال: الزرقاء" value="الزرقاء">
+<button id="get-prayer-times">تحديث</button>
+<button id="detect-location">📍 موقعي الحالي</button>
+</div>
+<div id="prayer-times-result" class="prayer-times">
+<p>جاري تحميل مواقيت الصلاة...</p>
+</div>
+<div class="links-grid" style="margin-top:20px">
+<a href="https://timesprayer.com" target="_blank" class="link-card"><h3>مواقيت مفصلة</h3><p>TimesPrayer</p></a>
+<a href="https://qiblafinder.withgoogle.com" target="_blank" class="link-card"><h3>🧭 اتجاه القبلة</h3><p>بوصلة القبلة</p></a>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Tabs
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      tabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+
+  // Clock & Hijri
+  const timeEl = document.getElementById('gregorian-time');
+  const hijriEl = document.getElementById('hijri-date');
+  function updateClock(){ const now=new Date(); timeEl.textContent = now.toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'}); }
+  setInterval(updateClock,1000); updateClock();
+
+  // Tasbeeh
+  let counters = JSON.parse(localStorage.getItem('tasbeehCounters')) || {"سبحان الله":0,"الحمد لله":0,"الله أكبر":0,"لا إله إلا الله":0,"أستغفر الله":0,"الصلاة على النبي":0};
+  let currentZikr = "سبحان الله";
+  const counterSpan = document.getElementById('counter-value');
+  const currentZikrSpan = document.getElementById('current-zikr');
+  const totalEl = document.getElementById('total-count');
+  
+  const save = () => localStorage.setItem('tasbeehCounters', JSON.stringify(counters));
+  const updateUI = () => {
+    counterSpan.innerText = counters[currentZikr];
+    currentZikrSpan.innerText = currentZikr;
+    totalEl.innerText = Object.values(counters).reduce((a,b)=>a+b,0);
+    document.querySelectorAll('.zikr-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.zikr === currentZikr));
+    save();
+  };
+  const increment = () => { counters[currentZikr]++; updateUI(); if(navigator.vibrate) navigator.vibrate(20); counterSpan.style.transform='scale(1.1)'; setTimeout(()=>counterSpan.style.transform='scale(1)',120); };
+  
+  document.querySelectorAll('.zikr-btn').forEach(btn => btn.addEventListener('click', () => { currentZikr = btn.dataset.zikr; updateUI(); }));
+  document.getElementById('increment-btn').addEventListener('click', increment);
+  document.getElementById('tasbeeh-area').addEventListener('click', increment);
+  document.getElementById('decrement-btn').addEventListener('click', () => { if(counters[currentZikr]>0){ counters[currentZikr]--; updateUI(); } });
+  document.getElementById('reset-btn').addEventListener('click', () => { counters[currentZikr]=0; updateUI(); });
+  document.getElementById('reset-all-counters').addEventListener('click', () => { if(confirm('هل تريد تصفير جميع العدادات؟')){ for(let k in counters) counters[k]=0; updateUI(); } });
+  document.addEventListener('keydown', e=>{ if(e.code==='Space' && document.getElementById('tasbeeh').classList.contains('active')){ e.preventDefault(); increment(); } });
+  updateUI();
+
+  // Prayer Times
+  const prayerNames = {Fajr:'الفجر', Sunrise:'الشروق', Dhuhr:'الظهر', Asr:'العصر', Maghrib:'المغرب', Isha:'العشاء'};
+  let prayerInterval;
+  
+  async function fetchPrayers(city, lat, lon){
+    const result = document.getElementById('prayer-times-result');
+    result.innerHTML = '<p>جاري التحميل...</p>';
+    try{
+      let url;
+      if(lat && lon){ url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=4`; }
+      else { url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=Jordan&method=4`; }
+      const res = await fetch(url);
+      const data = await res.json();
+      if(data.code===200){
+        const t = data.data.timings;
+        const hijri = data.data.date.hijri;
+        hijriEl.textContent = `${hijri.weekday.ar} ${hijri.day} ${hijri.month.ar} ${hijri.year} هـ`;
+        
+        const updatePrayerUI = () => {
+          const now = new Date();
+          const times = Object.entries(prayerNames).map(([key,name])=>{
+            const [h,m] = t[key].split(':'); const d = new Date(); d.setHours(+h,+m,0,0); return {key,name,time:t[key],date:d};
+          });
+          let next = times.find(x=>x.date>now) || times[0];
+          const diff = next.date>now ? next.date-now : (24*60*60*1000 - (now - times[0].date));
+          const mins = Math.floor((diff/1000/60)%60); const hrs = Math.floor(diff/1000/3600);
+          const timeLeft = hrs>0 ? `${hrs} س ${mins} د` : `${mins} د`;
+          
+          result.innerHTML = `
+            <div class="prayer-header">
+              <div>
+                <h3>${city}</h3>
+                <small>${hijri.weekday.ar} ${hijri.day} ${hijri.month.ar}</small>
+              </div>
+              <div class="next-prayer">
+                <span>الصلاة القادمة</span>
+                <strong>${next.name} - بعد ${timeLeft}</strong>
+              </div>
+            <div class="prayer-grid">
+              ${times.filter(p=>p.key!=='Sunrise').map(p=>`
+                <div class="prayer-card ${p.key===next.key?'active':''}">
+                  <div class="name">${p.name}</div>
+                  <div class="time">${p.time}</div>
+                </div>`).join('')}
+            </div>`;
+        };
+        clearInterval(prayerInterval);
+        updatePrayerUI();
+        prayerInterval = setInterval(updatePrayerUI, 30000);
+      }
+    }catch(e){ result.innerHTML='<p>⚠️ تعذر جلب المواقيت. تحقق من الاتصال.</p>'; }
+  }
+  
+  document.getElementById('get-prayer-times').addEventListener('click', () => fetchPrayers(document.getElementById('city-name').value || 'الزرقاء'));
+  document.getElementById('detect-location').addEventListener('click', () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(async p=>{
+        try{
+          const r=await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${p.coords.latitude}&longitude=${p.coords.longitude}&localityLanguage=ar`);
+          const d=await r.json();
+          const c=d.city||d.locality||'الزرقاء';
+          document.getElementById('city-name').value=c;
+          fetchPrayers(c, p.coords.latitude, p.coords.longitude);
+        }catch{ fetchPrayers('الزرقاء', p.coords.latitude, p.coords.longitude); }
+      }, ()=>fetchPrayers('الزرقاء'));
+    } else { fetchPrayers('الزرقاء'); }
+  });
+  fetchPrayers('الزرقاء');
+});
+
+function sharePage(){
+  const text = 'صدقة جارية عن أرواح عمي زكريا أبو ناصر - عمي يحيى أبو محمد - ابن العم محمود العدول.\nالمركز الديني الشامل - قرآن وأذكار وتسبيح';
+  const url = window.location.href;
+  if(navigator.share){ navigator.share({title:'نور الإيمان | صدقة جارية', text, url}).catch(()=>{}); }
+  else { window.open(`https://wa.me/?text=${encodeURIComponent(text+'\n'+url)}`,'_blank'); }
+}
+</script>
+</body>
+</html>
